@@ -1,7 +1,11 @@
-
-pyinstaller>=5.0
-pystray>=0.19.0
-Pillow>=9.0.0
+# Original tkinter version dependencies
 psutil>=5.9.0
-winshell>=0.6
-pywin32>=300
+Pillow>=9.0.0
+pystray>=0.17.3
+
+# PyQt6 version dependencies
+PyQt6>=6.0.0
+PyQt6-sip>=13.0.0
+
+# Windows-specific dependencies
+pywin32>=304
