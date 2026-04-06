@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Settings | PYSM{% endblock %}
+{% block heading %}Settings{% endblock %}
+{% block subheading %}Local manager configuration and autostart behavior.{% endblock %}
+{% block content %}
+<section class="grid split">
+    <article class="panel">
+        <div class="panel-header">
+            <h3>Manager Settings</h3>
+        </div>
+        <form class="form-grid" data-api-form data-endpoint="/api/settings" data-method="PUT" data-success="Settings saved. Restart the manager to apply host/port changes.">
+            <label>
+                <span>Host</span>
+                <input type="text" name="host" value="{{ settings.host }}" required>
+            </label>
+            <label>
+                <span>Port</span>
+                <input type="number" name="port" value="{{ settings.port }}" required>
+            </label>
+            <label>
+                <span>Open browser automatically</span>
+                <select name="auto_open_browser">
+                    <option value="true" {% if settings.auto_open_browser %}selected{% endif %}>Enabled</option>
+                    <option value="false" {% if not settings.auto_open_browser %}selected{% endif %}>Disabled</option>
+                </select>
+            </label>
+            <label>
+                <span>Terminal buffer bytes</span>
+                <input type="number" name="terminal_buffer_bytes" value="{{ settings.terminal_buffer_bytes }}">
+            </label>
+            <button type="submit">Save settings</button>
+        </form>
+    </article>
+    <article class="panel">
+        <div class="panel-header">
+            <h3>Autostart</h3>
+        </div>
+        <p>Manager autostart currently: <strong>{{ "enabled" if settings.manager_autostart else "disabled" }}</strong></p>
+        <div class="actions">
+            <button data-manager-autostart data-enabled="true">Enable manager autostart</button>
+            <button data-manager-autostart data-enabled="false">Disable manager autostart</button>
+        </div>
+        <div class="panel-header">
+            <h3>Runtime Status</h3>
+        </div>
+        <dl class="meta-list">
+            <div><dt>Status</dt><dd>{{ health.status }}</dd></div>
+            <div><dt>PID</dt><dd>{{ health.pid or "n/a" }}</dd></div>
+            <div><dt>Running scripts</dt><dd>{{ health.running_scripts }}</dd></div>
+        </dl>
+    </article>
+</section>
+{% endblock %}
+

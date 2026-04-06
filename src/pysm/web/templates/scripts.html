@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Scripts | PYSM{% endblock %}
+{% block heading %}Scripts{% endblock %}
+{% block subheading %}Register Python files, run them, and jump into their live consoles.{% endblock %}
+{% block content %}
+<section class="panel">
+    <div class="panel-header">
+        <h3>Add Script</h3>
+    </div>
+    <form class="form-grid" data-api-form data-endpoint="/api/scripts" data-method="POST" data-success="Script added. Refreshing…">
+        <label>
+            <span>Script path</span>
+            <input type="text" name="script_path" placeholder="C:\path\to\script.py" required>
+        </label>
+        <label>
+            <span>Autostart</span>
+            <select name="autostart">
+                <option value="false">Disabled</option>
+                <option value="true">Enabled</option>
+            </select>
+        </label>
+        <button type="submit">Add script</button>
+    </form>
+</section>
+
+<section class="panel">
+    <div class="panel-header">
+        <h3>Registered Scripts</h3>
+    </div>
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Path</th>
+            <th>Status</th>
+            <th>PID</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for script in scripts %}
+        <tr>
+            <td>{{ script.id }}</td>
+            <td>{{ script.name }}</td>
+            <td class="path">{{ script.script_path }}</td>
+            <td><span class="status status-{{ script.status }}">{{ script.status }}</span></td>
+            <td>{{ script.pid or "n/a" }}</td>
+            <td class="actions">
+                <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/start">Start</button>
+                <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/pause">Pause</button>
+                <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/resume">Resume</button>
+                <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/stop">Stop</button>
+                <a class="button-link" href="/scripts/{{ script.id }}">Console</a>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="6">No scripts yet. Add one above.</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}
+

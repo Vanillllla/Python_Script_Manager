@@ -1,0 +1,182 @@
+async function apiRequest(method, endpoint, payload = null) {
+  const options = {
+    method,
+    headers: { "Content-Type": "application/json" },
+  };
+  if (payload !== null) {
+    options.body = JSON.stringify(payload);
+  }
+  const response = await fetch(endpoint, options);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || data.message || `Request failed: ${response.status}`);
+  }
+  return data;
+}
+
+function formPayload(form) {
+  const formData = new FormData(form);
+  const payload = {};
+  for (const [key, value] of formData.entries()) {
+    if (value === "true") {
+      payload[key] = true;
+    } else if (value === "false") {
+      payload[key] = false;
+    } else if (/^\d+$/.test(value)) {
+      payload[key] = Number(value);
+    } else {
+      payload[key] = value;
+    }
+  }
+  return payload;
+}
+
+function showToast(message, isError = false) {
+  const toast = document.getElementById("toast");
+  if (!toast) return;
+  toast.hidden = false;
+  toast.textContent = message;
+  toast.style.background = isError ? "#ab3b27" : "#0d6b54";
+  window.setTimeout(() => {
+    toast.hidden = true;
+  }, 3200);
+}
+
+function bindApiForms() {
+  document.querySelectorAll("[data-api-form]").forEach((form) => {
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        await apiRequest(
+          form.dataset.method || "POST",
+          form.dataset.endpoint,
+          formPayload(form),
+        );
+        showToast(form.dataset.success || "Saved.");
+        window.setTimeout(() => window.location.reload(), 300);
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    });
+  });
+}
+
+function bindScriptActions() {
+  document.querySelectorAll("[data-script-action]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        const data = await apiRequest(button.dataset.method || "POST", button.dataset.endpoint, {});
+        showToast(data.message || data.status || "Action complete.");
+        window.setTimeout(() => window.location.reload(), 350);
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    });
+  });
+}
+
+function bindManagerAutostart() {
+  document.querySelectorAll("[data-manager-autostart]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        await apiRequest("POST", "/api/autostart/manager", {
+          enabled: button.dataset.enabled === "true",
+        });
+        showToast("Autostart updated.");
+        window.setTimeout(() => window.location.reload(), 300);
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    });
+  });
+}
+
+function bindModuleLinks() {
+  document.querySelectorAll("[data-open-modules]").forEach((link) => {
+    link.addEventListener("click", async (event) => {
+      event.preventDefault();
+      try {
+        const modules = await apiRequest(
+          "GET",
+          `/api/interpreters/${link.dataset.environmentId}/modules`,
+        );
+        const output = document.getElementById("modules-output");
+        output.textContent = modules.map((item) => `${item.name}==${item.version}`).join("\n");
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    });
+  });
+}
+
+function initTerminal() {
+  const root = document.getElementById("terminal-root");
+  const fallback = document.getElementById("terminal-fallback");
+  const form = document.getElementById("terminal-input-form");
+  if (!root || !form) return;
+  const scriptId = root.dataset.scriptId;
+  let terminalWriter;
+
+  if (window.Terminal) {
+    const terminal = new window.Terminal({
+      convertEol: true,
+      cursorBlink: true,
+      theme: {
+        background: "#121816",
+        foreground: "#d3f1e0",
+      },
+    });
+    terminal.open(root);
+    terminal.write("Connecting to script console...\r\n");
+    terminalWriter = (chunk) => terminal.write(chunk);
+  } else {
+    root.hidden = true;
+    fallback.hidden = false;
+    terminalWriter = (chunk) => {
+      fallback.textContent += chunk;
+      fallback.scrollTop = fallback.scrollHeight;
+    };
+  }
+
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const socket = new WebSocket(`${protocol}://${window.location.host}/api/scripts/${scriptId}/terminal`);
+
+  socket.addEventListener("message", (event) => {
+    const payload = JSON.parse(event.data);
+    if (payload.type === "snapshot") {
+      terminalWriter(payload.content || "");
+    } else if (payload.type === "chunk") {
+      terminalWriter(payload.content || "");
+    } else if (payload.type === "error") {
+      showToast(payload.message || "Terminal error", true);
+    }
+  });
+
+  socket.addEventListener("close", () => {
+    terminalWriter("\r\n[terminal disconnected]\r\n");
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const input = document.getElementById("terminal-input");
+    const value = input.value;
+    if (!value) return;
+    try {
+      await apiRequest("POST", `/api/scripts/${scriptId}/terminal/input`, {
+        data: `${value}\r\n`,
+      });
+      input.value = "";
+    } catch (error) {
+      showToast(error.message, true);
+    }
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  bindApiForms();
+  bindScriptActions();
+  bindManagerAutostart();
+  bindModuleLinks();
+  initTerminal();
+});
+

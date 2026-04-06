@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Python Script Manager{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.5.0/css/xterm.min.css">
+</head>
+<body>
+<div class="shell">
+    <aside class="sidebar">
+        <h1>PYSM</h1>
+        <nav>
+            <a href="/">Dashboard</a>
+            <a href="/scripts">Scripts</a>
+            <a href="/interpreters">Interpreters</a>
+            <a href="/settings">Settings</a>
+        </nav>
+        <div class="sidebar-card">
+            <div>Host</div>
+            <strong>{{ settings.host }}:{{ settings.port }}</strong>
+        </div>
+    </aside>
+    <main class="main">
+        <header class="page-header">
+            <div>
+                <h2>{% block heading %}Python Script Manager{% endblock %}</h2>
+                <p>{% block subheading %}Manage scripts, environments, and live consoles.{% endblock %}</p>
+            </div>
+            <div id="toast" class="toast" hidden></div>
+        </header>
+        {% block content %}{% endblock %}
+    </main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/htmx.org@1.9.12"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.5.0/lib/xterm.min.js"></script>
+<script src="{{ url_for('static', path='/app.js') }}"></script>
+</body>
+</html>
+

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Interpreters | PYSM{% endblock %}
+{% block heading %}Interpreters{% endblock %}
+{% block subheading %}Discover system Python, create managed environments, and bind them to scripts.{% endblock %}
+{% block content %}
+<section class="grid split">
+    <article class="panel">
+        <div class="panel-header">
+            <h3>Add Interpreter</h3>
+        </div>
+        <form class="form-grid" data-api-form data-endpoint="/api/interpreters" data-method="POST" data-success="Interpreter added. Refreshing…">
+            <label>
+                <span>Python executable</span>
+                <input type="text" name="python_exe" placeholder="C:\Python313\python.exe" required>
+            </label>
+            <label>
+                <span>Label</span>
+                <input type="text" name="label" placeholder="Optional label">
+            </label>
+            <button type="submit">Register interpreter</button>
+        </form>
+        <div class="panel-header">
+            <h3>Create Local Environment</h3>
+        </div>
+        <form class="form-grid" data-api-form data-endpoint="/api/interpreters/install" data-method="POST" data-success="Environment created. Refreshing…">
+            <label>
+                <span>Base interpreter ID</span>
+                <input type="number" name="base_interpreter_id" required>
+            </label>
+            <label>
+                <span>Name</span>
+                <input type="text" name="name" placeholder="default">
+            </label>
+            <button type="submit">Create environment</button>
+        </form>
+        <div class="panel-header">
+            <h3>Bind Environment to Script</h3>
+        </div>
+        <form class="form-grid" data-api-form data-endpoint="/api/interpreters/select" data-method="POST" data-success="Environment assigned. Refreshing…">
+            <label>
+                <span>Script ID</span>
+                <input type="number" name="script_id" required>
+            </label>
+            <label>
+                <span>Environment ID</span>
+                <input type="number" name="environment_id" required>
+            </label>
+            <button type="submit">Assign environment</button>
+        </form>
+    </article>
+
+    <article class="panel">
+        <div class="panel-header">
+            <h3>System Interpreters</h3>
+        </div>
+        <table class="data-table">
+            <thead>
+            <tr><th>ID</th><th>Label</th><th>Version</th><th>Path</th></tr>
+            </thead>
+            <tbody>
+            {% for item in interpreters %}
+            <tr>
+                <td>{{ item.id }}</td>
+                <td>{{ item.label }}</td>
+                <td>{{ item.version }} / {{ item.arch }}</td>
+                <td class="path">{{ item.python_exe }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4">No interpreters discovered.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="panel-header">
+            <h3>Managed Environments</h3>
+        </div>
+        <table class="data-table">
+            <thead>
+            <tr><th>ID</th><th>Name</th><th>Python</th><th>Modules</th></tr>
+            </thead>
+            <tbody>
+            {% for item in environments %}
+            <tr>
+                <td>{{ item.id }}</td>
+                <td>{{ item.display_name }}</td>
+                <td class="path">{{ item.python_exe }}</td>
+                <td><a class="button-link" href="#" data-open-modules data-environment-id="{{ item.id }}">Show modules</a></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4">No managed environments yet.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <pre id="modules-output" class="modules-output">Select an environment to list installed modules.</pre>
+    </article>
+</section>
+{% endblock %}
+

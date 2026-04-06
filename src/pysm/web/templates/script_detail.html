@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Script {{ script.id }} | PYSM{% endblock %}
+{% block heading %}{{ script.name }}{% endblock %}
+{% block subheading %}Interactive console and lifecycle controls for the selected script.{% endblock %}
+{% block content %}
+<section class="grid split">
+    <article class="panel">
+        <div class="panel-header">
+            <h3>Script Details</h3>
+        </div>
+        <dl class="meta-list">
+            <div><dt>ID</dt><dd>{{ script.id }}</dd></div>
+            <div><dt>Status</dt><dd><span class="status status-{{ script.status }}">{{ script.status }}</span></dd></div>
+            <div><dt>Path</dt><dd class="path">{{ script.script_path }}</dd></div>
+            <div><dt>PID</dt><dd>{{ script.pid or "n/a" }}</dd></div>
+            <div><dt>Interpreter env</dt><dd>{{ script.interpreter_env_id or "auto" }}</dd></div>
+            <div><dt>Autostart</dt><dd>{{ "enabled" if script.autostart else "disabled" }}</dd></div>
+        </dl>
+        <div class="actions">
+            <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/start">Start</button>
+            <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/pause">Pause</button>
+            <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/resume">Resume</button>
+            <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/stop">Stop</button>
+        </div>
+        {% if script.last_error %}
+        <div class="alert">{{ script.last_error }}</div>
+        {% endif %}
+    </article>
+    <article class="panel console-panel">
+        <div class="panel-header">
+            <h3>Live Console</h3>
+            <span>Embedded web terminal</span>
+        </div>
+        <div id="terminal-root" class="terminal-root" data-script-id="{{ script.id }}"></div>
+        <pre id="terminal-fallback" class="terminal-fallback" hidden></pre>
+        <form id="terminal-input-form" class="console-form" data-script-id="{{ script.id }}">
+            <input id="terminal-input" type="text" placeholder="Type input for stdin and press Enter">
+            <button type="submit">Send</button>
+        </form>
+    </article>
+</section>
+{% endblock %}
+
