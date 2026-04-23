@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ script.name }} | PYSM{% endblock %}
+{% block heading %}{{ script.name }}{% endblock %}
+{% block subheading %}{{ t("web.script_detail.subheading") }}{% endblock %}
+{% block content %}
+<section class="grid split">
+    <article class="panel">
+        <div class="panel-header">
+            <h3>{{ t("web.script_detail.details_heading") }}</h3>
+        </div>
+        <dl class="meta-list">
+            <div><dt>{{ t("common.labels.id") }}</dt><dd>{{ script.id }}</dd></div>
+            <div><dt>{{ t("common.labels.status") }}</dt><dd><span class="status status-{{ script.status }}">{{ status_label(script.status) }}</span></dd></div>
+            <div><dt>{{ t("common.labels.path") }}</dt><dd class="path">{{ script.script_path }}</dd></div>
+            <div><dt>{{ t("common.labels.pid") }}</dt><dd>{{ script.pid or t("common.values.na") }}</dd></div>
+            <div><dt>{{ t("common.labels.environment") }}</dt><dd>{{ script.interpreter_env_id or t("common.states.auto") }}</dd></div>
+            <div><dt>{{ t("common.labels.autostart") }}</dt><dd>{{ bool_label(script.autostart) }}</dd></div>
+            <div><dt>{{ t("common.labels.exit_code") }}</dt><dd>{{ script.exit_code if script.exit_code is not none else t("common.values.na") }}</dd></div>
+        </dl>
+        <div class="actions">
+            <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/start">{{ t("common.actions.start") }}</button>
+            <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/pause">{{ t("common.actions.pause") }}</button>
+            <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/resume">{{ t("common.actions.resume") }}</button>
+            <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/stop">{{ t("common.actions.stop") }}</button>
+        </div>
+        {% if script.last_error %}
+        <div class="alert">{{ tm(script.last_error) }}</div>
+        {% endif %}
+    </article>
+    <article class="panel console-panel">
+        <div class="panel-header">
+            <h3>{{ t("web.script_detail.console_heading") }}</h3>
+            <span>{{ t("web.script_detail.console_subtitle") }}</span>
+        </div>
+        <div id="terminal-root" class="terminal-root" data-script-id="{{ script.id }}"></div>
+        <pre id="terminal-fallback" class="terminal-fallback" hidden></pre>
+        <form id="terminal-input-form" class="console-form" data-script-id="{{ script.id }}">
+            <input id="terminal-input" type="text" placeholder="{{ t('web.script_detail.input_placeholder') }}">
+            <button type="submit">{{ t("common.actions.send") }}</button>
+        </form>
+    </article>
+</section>
+{% endblock %}

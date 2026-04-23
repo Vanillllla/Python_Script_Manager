@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}{{ t("web.interpreters.title") }}{% endblock %}
+{% block heading %}{{ t("web.interpreters.heading") }}{% endblock %}
+{% block subheading %}{{ t("web.interpreters.subheading") }}{% endblock %}
+{% block content %}
+<section class="grid split">
+    <article class="panel">
+        <div class="panel-header">
+            <h3>{{ t("web.interpreters.add_heading") }}</h3>
+        </div>
+        <form class="form-grid" data-api-form data-endpoint="/api/interpreters" data-method="POST" data-success="{{ t('web.interpreters.register_success') }}">
+            <label>
+                <span>{{ t("common.labels.python_executable") }}</span>
+                <input type="text" name="python_exe" placeholder="C:\Python313\python.exe" required>
+            </label>
+            <label>
+                <span>{{ t("common.labels.label") }}</span>
+                <input type="text" name="label" placeholder="{{ t('web.interpreters.label_placeholder') }}">
+            </label>
+            <button type="submit">{{ t("common.actions.register") }}</button>
+        </form>
+        <div class="panel-header">
+            <h3>{{ t("web.interpreters.create_environment_heading") }}</h3>
+        </div>
+        <form class="form-grid" data-api-form data-endpoint="/api/interpreters/install" data-method="POST" data-success="{{ t('web.interpreters.create_environment_success') }}">
+            <label>
+                <span>{{ t("common.labels.base_interpreter_id") }}</span>
+                <input type="number" name="base_interpreter_id" required>
+            </label>
+            <label>
+                <span>{{ t("common.labels.name") }}</span>
+                <input type="text" name="name" placeholder="default">
+            </label>
+            <button type="submit">{{ t("common.actions.create") }}</button>
+        </form>
+        <div class="panel-header">
+            <h3>{{ t("web.interpreters.bind_heading") }}</h3>
+        </div>
+        <form class="form-grid" data-api-form data-endpoint="/api/interpreters/select" data-method="POST" data-success="{{ t('web.interpreters.assign_success') }}">
+            <label>
+                <span>{{ t("common.labels.script_id") }}</span>
+                <input type="number" name="script_id" required>
+            </label>
+            <label>
+                <span>{{ t("common.labels.environment_id") }}</span>
+                <input type="number" name="environment_id" required>
+            </label>
+            <button type="submit">{{ t("common.actions.assign") }}</button>
+        </form>
+    </article>
+
+    <article class="panel">
+        <div class="panel-header">
+            <h3>{{ t("web.interpreters.system_interpreters") }}</h3>
+        </div>
+        <table class="data-table">
+            <thead>
+            <tr><th>{{ t("common.labels.id") }}</th><th>{{ t("common.labels.label") }}</th><th>{{ t("common.labels.version") }}</th><th>{{ t("common.labels.path") }}</th></tr>
+            </thead>
+            <tbody>
+            {% for item in interpreters %}
+            <tr>
+                <td>{{ item.id }}</td>
+                <td>{{ item.label }}</td>
+                <td>{{ item.version }} / {{ item.arch }}</td>
+                <td class="path">{{ item.python_exe }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4">{{ t("web.interpreters.empty_interpreters") }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="panel-header">
+            <h3>{{ t("web.interpreters.managed_environments") }}</h3>
+        </div>
+        <table class="data-table">
+            <thead>
+            <tr><th>{{ t("common.labels.id") }}</th><th>{{ t("common.labels.name") }}</th><th>{{ t("common.labels.python") }}</th><th>{{ t("common.labels.modules") }}</th></tr>
+            </thead>
+            <tbody>
+            {% for item in environments %}
+            <tr>
+                <td>{{ item.id }}</td>
+                <td>{{ item.display_name }}</td>
+                <td class="path">{{ item.python_exe }}</td>
+                <td><a class="button-link" href="#" data-open-modules data-environment-id="{{ item.id }}">{{ t("common.actions.show") }}</a></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4">{{ t("web.interpreters.empty_environments") }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <pre id="modules-output" class="modules-output">{{ t("web.interpreters.modules_empty") }}</pre>
+    </article>
+</section>
+{% endblock %}

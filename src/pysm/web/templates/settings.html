@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}{{ t("web.settings.title") }}{% endblock %}
+{% block heading %}{{ t("web.settings.heading") }}{% endblock %}
+{% block subheading %}{{ t("web.settings.subheading") }}{% endblock %}
+{% block content %}
+<section class="grid split">
+    <article class="panel">
+        <div class="panel-header">
+            <h3>{{ t("web.settings.manager_settings") }}</h3>
+        </div>
+        <form class="form-grid" data-api-form data-endpoint="/api/settings" data-method="PUT" data-success="{{ t('web.settings.restart_notice') }}">
+            <label>
+                <span>{{ t("common.labels.host") }}</span>
+                <input type="text" name="host" value="{{ settings.host }}" required>
+            </label>
+            <label>
+                <span>{{ t("common.labels.port") }}</span>
+                <input type="number" name="port" value="{{ settings.port }}" required>
+            </label>
+            <label>
+                <span>{{ t("common.labels.open_browser") }}</span>
+                <select name="auto_open_browser">
+                    <option value="true" {% if settings.auto_open_browser %}selected{% endif %}>{{ t("common.states.enabled") }}</option>
+                    <option value="false" {% if not settings.auto_open_browser %}selected{% endif %}>{{ t("common.states.disabled") }}</option>
+                </select>
+            </label>
+            <label>
+                <span>{{ t("common.labels.terminal_buffer_bytes") }}</span>
+                <input type="number" name="terminal_buffer_bytes" value="{{ settings.terminal_buffer_bytes }}">
+            </label>
+            <label>
+                <span>{{ t("common.labels.language") }}</span>
+                <select name="language">
+                    <option value="en" {% if settings.language == "en" %}selected{% endif %}>{{ locale_name("en") }}</option>
+                    <option value="ru" {% if settings.language == "ru" %}selected{% endif %}>{{ locale_name("ru") }}</option>
+                </select>
+            </label>
+            <button type="submit">{{ t("common.actions.save") }}</button>
+        </form>
+    </article>
+    <article class="panel">
+        <div class="panel-header">
+            <h3>{{ t("web.settings.autostart_heading") }}</h3>
+        </div>
+        <p>{{ t("common.labels.manager_autostart") }}: <strong>{{ bool_label(settings.manager_autostart) }}</strong></p>
+        <div class="actions">
+            <button data-manager-autostart data-enabled="true">{{ t("common.actions.enable") }}</button>
+            <button data-manager-autostart data-enabled="false">{{ t("common.actions.disable") }}</button>
+        </div>
+        <div class="panel-header">
+            <h3>{{ t("web.settings.runtime_status") }}</h3>
+        </div>
+        <dl class="meta-list">
+            <div><dt>{{ t("common.labels.status") }}</dt><dd>{{ status_label(health.status) }}</dd></div>
+            <div><dt>{{ t("common.labels.pid") }}</dt><dd>{{ health.pid or t("common.values.na") }}</dd></div>
+            <div><dt>{{ t("common.labels.running_scripts") }}</dt><dd>{{ health.running_scripts }}</dd></div>
+        </dl>
+    </article>
+</section>
+{% endblock %}

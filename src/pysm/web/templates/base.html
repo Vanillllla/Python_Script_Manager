@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ t("common.app_name") }}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.5.0/css/xterm.min.css">
+</head>
+<body>
+<div class="shell">
+    <aside class="sidebar">
+        <h1>PYSM</h1>
+        <nav>
+            <a href="/">{{ t("common.nav.dashboard") }}</a>
+            <a href="/scripts">{{ t("common.nav.scripts") }}</a>
+            <a href="/interpreters">{{ t("common.nav.interpreters") }}</a>
+            <a href="/settings">{{ t("common.nav.settings") }}</a>
+        </nav>
+        <div class="sidebar-card">
+            <div>{{ t("common.labels.host") }}</div>
+            <strong>{{ settings.host }}:{{ settings.port }}</strong>
+            <small>{{ t("common.labels.language") }}: {{ locale_name(settings.language) }}</small>
+        </div>
+    </aside>
+    <main class="main">
+        <header class="page-header">
+            <div>
+                <h2>{% block heading %}{{ t("common.app_name") }}{% endblock %}</h2>
+                <p>{% block subheading %}{% endblock %}</p>
+            </div>
+            <div id="toast" class="toast" hidden></div>
+        </header>
+        {% block content %}{% endblock %}
+    </main>
+</div>
+<script>
+window.pysmMessages = {{ frontend_messages | tojson }};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.5.0/lib/xterm.min.js"></script>
+<script src="{{ url_for('static', path='/app.js') }}"></script>
+</body>
+</html>
