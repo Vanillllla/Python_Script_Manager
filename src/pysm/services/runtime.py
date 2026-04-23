@@ -9,7 +9,10 @@ from pathlib import Path
 from sqlalchemy import desc, select
 
 from pysm.config import AppPaths
+from pysm.domain.exceptions import PysmError
+from pysm.domain.messages import MessageSpec
 from pysm.domain.models import (
+    ActionResult,
     RunRecord,
     ScriptRecord,
     StartScriptResult,
@@ -20,7 +23,7 @@ from pysm.infra.database import Database
 from pysm.services.dependencies import DependencyService
 from pysm.services.interpreters import InterpreterService
 from pysm.services.settings import SettingsService
-from pysm.windows.pty import ManagedTerminalProcess, process_metrics
+from pysm.windows.pty import ManagedTerminalProcess, TerminalBuffer, process_metrics
 
 
 LOGGER = logging.getLogger(__name__)
@@ -32,6 +35,15 @@ class ActiveSession:
     process: ManagedTerminalProcess
     script_id: int
     log_file: Path
+
+
+@dataclass(slots=True)
+class RetainedTerminalSession:
+    run_id: int
+    buffer: TerminalBuffer
+    backend: str
+    pid: int | None
+    exit_code: int | None
 
 
 class RuntimeService:
@@ -49,6 +61,7 @@ class RuntimeService:
         self.interpreter_service = interpreter_service
         self.dependency_service = dependency_service
         self.active_sessions: dict[int, ActiveSession] = {}
+        self.retained_sessions: dict[int, RetainedTerminalSession] = {}
 
     def add_script(
         self,
@@ -58,7 +71,10 @@ class RuntimeService:
     ) -> ScriptRecord:
         path = Path(script_path).expanduser().resolve()
         if path.suffix.lower() != ".py" or not path.exists():
-            raise ValueError("script_path must point to an existing .py file")
+            raise PysmError(
+                code="script.invalid_path",
+                message_key="errors.script.invalid_path",
+            )
         with self.database.session() as session:
             record = ScriptRecord(
                 name=path.stem,
@@ -77,10 +93,11 @@ class RuntimeService:
         removed = 0
         with self.database.session() as session:
             for script_id in script_ids:
-                self.stop_script(script_id)
                 record = session.get(ScriptRecord, script_id)
                 if record is None:
                     continue
+                if script_id in self.active_sessions:
+                    self.stop_script(script_id)
                 session.delete(record)
                 removed += 1
             session.commit()
@@ -109,7 +126,7 @@ class RuntimeService:
                         "interpreter_env_id": script.interpreter_env_id,
                         "autostart": script.autostart,
                         "desired_state": script.desired_state,
-                        "last_error": script.last_error,
+                        "last_error": MessageSpec.from_storage(script.last_error),
                         "status": latest_run.status if latest_run else "stopped",
                         "pause_state": latest_run.pause_state if latest_run else "stopped",
                         "pid": latest_run.pid if latest_run else None,
@@ -124,7 +141,12 @@ class RuntimeService:
         scripts = {item["id"]: item for item in self.list_scripts()}
         script = scripts.get(script_id)
         if script is None:
-            raise ValueError(f"Unknown script id {script_id}")
+            raise PysmError(
+                code="script.not_found",
+                message_key="errors.script.not_found",
+                params={"script_id": script_id},
+                status_code=404,
+            )
         return script
 
     def start_script(self, script_id: int, install_missing: bool = False) -> StartScriptResult:
@@ -133,15 +155,19 @@ class RuntimeService:
             active = self.active_sessions[script_id]
             return StartScriptResult(
                 status="already_running",
-                message="Script is already running",
-                missing_modules=[],
+                message=MessageSpec("runtime.start.already_running"),
                 run_id=active.run_id,
                 pid=active.process.pid,
             )
         with self.database.session() as session:
             script = session.get(ScriptRecord, script_id)
             if script is None:
-                raise ValueError(f"Unknown script id {script_id}")
+                raise PysmError(
+                    code="script.not_found",
+                    message_key="errors.script.not_found",
+                    params={"script_id": script_id},
+                    status_code=404,
+                )
             environment = self.interpreter_service.get_environment(script.interpreter_env_id)
             if environment is None:
                 environment = self.interpreter_service.ensure_default_environment()
@@ -150,13 +176,15 @@ class RuntimeService:
                 Path(script.script_path), Path(environment.python_exe)
             )
             if report.missing_modules and not install_missing:
-                script.last_error = (
-                    "Missing modules: " + ", ".join(report.missing_modules) + ". Install them first."
+                message = MessageSpec(
+                    "errors.runtime.missing_modules",
+                    {"modules": ", ".join(report.missing_modules)},
                 )
+                script.last_error = message.to_storage()
                 session.commit()
                 return StartScriptResult(
                     status="missing_modules",
-                    message=script.last_error,
+                    message=message,
                     missing_modules=report.missing_modules,
                 )
             if report.missing_modules:
@@ -193,6 +221,7 @@ class RuntimeService:
             script.desired_state = "running"
             script.last_error = None
             session.commit()
+            self.retained_sessions.pop(script.id, None)
             self.active_sessions[script.id] = ActiveSession(
                 run_id=run.id,
                 process=process,
@@ -201,20 +230,31 @@ class RuntimeService:
             )
             return StartScriptResult(
                 status="started",
-                message="Script started",
-                missing_modules=[],
+                message=MessageSpec("runtime.start.started"),
                 run_id=run.id,
                 pid=process.pid,
             )
 
-    def stop_script(self, script_id: int) -> None:
+    def stop_script(self, script_id: int) -> ActionResult:
         active = self.active_sessions.get(script_id)
-        if active:
-            active.process.terminate()
         with self.database.session() as session:
             script = session.get(ScriptRecord, script_id)
             if script is None:
-                return
+                raise PysmError(
+                    code="script.not_found",
+                    message_key="errors.script.not_found",
+                    params={"script_id": script_id},
+                    status_code=404,
+                )
+            if active:
+                active.process.terminate()
+                self.retained_sessions[script_id] = RetainedTerminalSession(
+                    run_id=active.run_id,
+                    buffer=active.process.buffer,
+                    backend=active.process.backend,
+                    pid=active.process.pid,
+                    exit_code=active.process.exit_code,
+                )
             latest_run = session.scalar(
                 select(RunRecord)
                 .where(RunRecord.script_id == script_id)
@@ -228,8 +268,9 @@ class RuntimeService:
             script.desired_state = "stopped"
             session.commit()
         self.active_sessions.pop(script_id, None)
+        return ActionResult(status="stopped", message=MessageSpec("runtime.stop.stopped"))
 
-    def pause_script(self, script_id: int) -> None:
+    def pause_script(self, script_id: int) -> ActionResult:
         active = self._require_active(script_id)
         active.process.suspend()
         with self.database.session() as session:
@@ -243,8 +284,9 @@ class RuntimeService:
                 latest_run.status = "paused"
                 latest_run.pause_state = "paused"
                 session.commit()
+        return ActionResult(status="paused", message=MessageSpec("runtime.pause.paused"))
 
-    def resume_script(self, script_id: int) -> None:
+    def resume_script(self, script_id: int) -> ActionResult:
         active = self._require_active(script_id)
         active.process.resume()
         with self.database.session() as session:
@@ -258,14 +300,25 @@ class RuntimeService:
                 latest_run.status = "running"
                 latest_run.pause_state = "running"
                 session.commit()
+        return ActionResult(status="running", message=MessageSpec("runtime.resume.resumed"))
 
-    def set_script_autostart(self, script_id: int, enabled: bool) -> None:
+    def set_script_autostart(self, script_id: int, enabled: bool) -> ActionResult:
         with self.database.session() as session:
             script = session.get(ScriptRecord, script_id)
             if script is None:
-                raise ValueError(f"Unknown script id {script_id}")
+                raise PysmError(
+                    code="script.not_found",
+                    message_key="errors.script.not_found",
+                    params={"script_id": script_id},
+                    status_code=404,
+                )
             script.autostart = enabled
             session.commit()
+        message_key = "runtime.autostart.enabled" if enabled else "runtime.autostart.disabled"
+        return ActionResult(
+            status="enabled" if enabled else "disabled",
+            message=MessageSpec(message_key),
+        )
 
     def ensure_autostart_scripts(self) -> None:
         with self.database.session() as session:
@@ -278,20 +331,49 @@ class RuntimeService:
                     LOGGER.warning("Unable to autostart script %s: %s", script.id, exc)
 
     def terminal_snapshot(self, script_id: int) -> TerminalSnapshot:
-        active = self._require_active(script_id)
-        sequence, content = active.process.buffer.snapshot()
+        self.sync_active_processes()
+        active = self.active_sessions.get(script_id)
+        if active and active.process.is_alive():
+            sequence, content = active.process.buffer.snapshot()
+            return TerminalSnapshot(
+                sequence=sequence,
+                content=content,
+                backend=active.process.backend,
+                is_running=True,
+                pid=active.process.pid,
+                exit_code=active.process.exit_code,
+            )
+        retained = self.retained_sessions.get(script_id)
+        if retained:
+            sequence, content = retained.buffer.snapshot()
+            return TerminalSnapshot(
+                sequence=sequence,
+                content=content,
+                backend=retained.backend,
+                is_running=False,
+                pid=retained.pid,
+                exit_code=retained.exit_code,
+            )
+        self.get_script(script_id)
         return TerminalSnapshot(
-            sequence=sequence,
-            content=content,
-            backend=active.process.backend,
-            is_running=active.process.is_alive(),
-            pid=active.process.pid,
-            exit_code=active.process.exit_code,
+            sequence=0,
+            content="",
+            backend=os.environ.get("PYSM_CONSOLE_BACKEND", "pipes"),
+            is_running=False,
+            pid=None,
+            exit_code=None,
         )
 
     def terminal_chunks_since(self, script_id: int, sequence: int) -> list[tuple[int, str]]:
-        active = self._require_active(script_id)
-        return active.process.buffer.chunks_since(sequence)
+        self.sync_active_processes()
+        active = self.active_sessions.get(script_id)
+        if active and active.process.is_alive():
+            return active.process.buffer.chunks_since(sequence)
+        retained = self.retained_sessions.get(script_id)
+        if retained:
+            return retained.buffer.chunks_since(sequence)
+        self.get_script(script_id)
+        return []
 
     def write_terminal_input(self, script_id: int, data: str) -> None:
         active = self._require_active(script_id)
@@ -313,6 +395,13 @@ class RuntimeService:
                 script = session.get(ScriptRecord, script_id)
                 if script:
                     script.desired_state = "stopped"
+                self.retained_sessions[script_id] = RetainedTerminalSession(
+                    run_id=active.run_id,
+                    buffer=active.process.buffer,
+                    backend=active.process.backend,
+                    pid=active.process.pid,
+                    exit_code=active.process.exit_code,
+                )
             if stale:
                 session.commit()
         for script_id in stale:
@@ -322,7 +411,11 @@ class RuntimeService:
         self.sync_active_processes()
         active = self.active_sessions.get(script_id)
         if active is None or not active.process.is_alive():
-            raise ValueError(f"Script {script_id} is not running")
+            raise PysmError(
+                code="script.not_running",
+                message_key="errors.script.not_running",
+                params={"script_id": script_id},
+            )
         return active
 
 

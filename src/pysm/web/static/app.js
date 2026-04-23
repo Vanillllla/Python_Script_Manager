@@ -1,3 +1,7 @@
+function msg(key, fallback = "") {
+  return (window.pysmMessages && window.pysmMessages[key]) || fallback || key;
+}
+
 async function apiRequest(method, endpoint, payload = null) {
   const options = {
     method,
@@ -52,7 +56,7 @@ function bindApiForms() {
           form.dataset.endpoint,
           formPayload(form),
         );
-        showToast(form.dataset.success || "Saved.");
+        showToast(form.dataset.success || msg("frontend.toast.saved", "Saved."));
         window.setTimeout(() => window.location.reload(), 300);
       } catch (error) {
         showToast(error.message, true);
@@ -66,7 +70,7 @@ function bindScriptActions() {
     button.addEventListener("click", async () => {
       try {
         const data = await apiRequest(button.dataset.method || "POST", button.dataset.endpoint, {});
-        showToast(data.message || data.status || "Action complete.");
+        showToast(data.message || data.status || msg("frontend.toast.action_complete", "Action complete."));
         window.setTimeout(() => window.location.reload(), 350);
       } catch (error) {
         showToast(error.message, true);
@@ -79,10 +83,10 @@ function bindManagerAutostart() {
   document.querySelectorAll("[data-manager-autostart]").forEach((button) => {
     button.addEventListener("click", async () => {
       try {
-        await apiRequest("POST", "/api/autostart/manager", {
+        const data = await apiRequest("POST", "/api/autostart/manager", {
           enabled: button.dataset.enabled === "true",
         });
-        showToast("Autostart updated.");
+        showToast(data.message || msg("frontend.toast.autostart_updated", "Autostart updated."));
         window.setTimeout(() => window.location.reload(), 300);
       } catch (error) {
         showToast(error.message, true);
@@ -92,6 +96,10 @@ function bindManagerAutostart() {
 }
 
 function bindModuleLinks() {
+  const output = document.getElementById("modules-output");
+  if (output && !output.textContent.trim()) {
+    output.textContent = msg("frontend.modules.empty", "Select an environment to list installed modules.");
+  }
   document.querySelectorAll("[data-open-modules]").forEach((link) => {
     link.addEventListener("click", async (event) => {
       event.preventDefault();
@@ -100,7 +108,6 @@ function bindModuleLinks() {
           "GET",
           `/api/interpreters/${link.dataset.environmentId}/modules`,
         );
-        const output = document.getElementById("modules-output");
         output.textContent = modules.map((item) => `${item.name}==${item.version}`).join("\n");
       } catch (error) {
         showToast(error.message, true);
@@ -127,11 +134,12 @@ function initTerminal() {
       },
     });
     terminal.open(root);
-    terminal.write("Connecting to script console...\r\n");
+    terminal.write(msg("frontend.terminal.connecting", "Connecting to script console...\r\n"));
     terminalWriter = (chunk) => terminal.write(chunk);
   } else {
     root.hidden = true;
     fallback.hidden = false;
+    fallback.textContent = msg("frontend.terminal.connecting", "Connecting to script console...\r\n");
     terminalWriter = (chunk) => {
       fallback.textContent += chunk;
       fallback.scrollTop = fallback.scrollHeight;
@@ -148,12 +156,12 @@ function initTerminal() {
     } else if (payload.type === "chunk") {
       terminalWriter(payload.content || "");
     } else if (payload.type === "error") {
-      showToast(payload.message || "Terminal error", true);
+      showToast(payload.message || msg("frontend.terminal.error", "Terminal error"), true);
     }
   });
 
   socket.addEventListener("close", () => {
-    terminalWriter("\r\n[terminal disconnected]\r\n");
+    terminalWriter(msg("frontend.terminal.disconnected", "\r\n[terminal disconnected]\r\n"));
   });
 
   form.addEventListener("submit", async (event) => {
@@ -179,4 +187,3 @@ document.addEventListener("DOMContentLoaded", () => {
   bindModuleLinks();
   initTerminal();
 });
-

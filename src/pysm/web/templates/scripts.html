@@ -1,41 +1,41 @@
 {% extends "base.html" %}
-{% block title %}Scripts | PYSM{% endblock %}
-{% block heading %}Scripts{% endblock %}
-{% block subheading %}Register Python files, run them, and jump into their live consoles.{% endblock %}
+{% block title %}{{ t("web.scripts.title") }}{% endblock %}
+{% block heading %}{{ t("web.scripts.heading") }}{% endblock %}
+{% block subheading %}{{ t("web.scripts.subheading") }}{% endblock %}
 {% block content %}
 <section class="panel">
     <div class="panel-header">
-        <h3>Add Script</h3>
+        <h3>{{ t("web.scripts.add_heading") }}</h3>
     </div>
-    <form class="form-grid" data-api-form data-endpoint="/api/scripts" data-method="POST" data-success="Script added. Refreshing…">
+    <form class="form-grid" data-api-form data-endpoint="/api/scripts" data-method="POST" data-success="{{ t('web.scripts.add_success') }}">
         <label>
-            <span>Script path</span>
-            <input type="text" name="script_path" placeholder="C:\path\to\script.py" required>
+            <span>{{ t("common.labels.script_path") }}</span>
+            <input type="text" name="script_path" placeholder="{{ t('web.scripts.script_path_placeholder') }}" required>
         </label>
         <label>
-            <span>Autostart</span>
+            <span>{{ t("common.labels.autostart") }}</span>
             <select name="autostart">
-                <option value="false">Disabled</option>
-                <option value="true">Enabled</option>
+                <option value="false">{{ t("common.states.disabled") }}</option>
+                <option value="true">{{ t("common.states.enabled") }}</option>
             </select>
         </label>
-        <button type="submit">Add script</button>
+        <button type="submit">{{ t("common.actions.add") }}</button>
     </form>
 </section>
 
 <section class="panel">
     <div class="panel-header">
-        <h3>Registered Scripts</h3>
+        <h3>{{ t("web.scripts.registered_heading") }}</h3>
     </div>
     <table class="data-table">
         <thead>
         <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Path</th>
-            <th>Status</th>
-            <th>PID</th>
-            <th>Actions</th>
+            <th>{{ t("common.labels.id") }}</th>
+            <th>{{ t("common.labels.name") }}</th>
+            <th>{{ t("common.labels.path") }}</th>
+            <th>{{ t("common.labels.status") }}</th>
+            <th>{{ t("common.labels.pid") }}</th>
+            <th>{{ t("common.labels.actions") }}</th>
         </tr>
         </thead>
         <tbody>
@@ -44,23 +44,22 @@
             <td>{{ script.id }}</td>
             <td>{{ script.name }}</td>
             <td class="path">{{ script.script_path }}</td>
-            <td><span class="status status-{{ script.status }}">{{ script.status }}</span></td>
-            <td>{{ script.pid or "n/a" }}</td>
+            <td><span class="status status-{{ script.status }}">{{ status_label(script.status) }}</span></td>
+            <td>{{ script.pid or t("common.values.na") }}</td>
             <td class="actions">
-                <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/start">Start</button>
-                <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/pause">Pause</button>
-                <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/resume">Resume</button>
-                <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/stop">Stop</button>
-                <a class="button-link" href="/scripts/{{ script.id }}">Console</a>
+                <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/start">{{ t("common.actions.start") }}</button>
+                <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/pause">{{ t("common.actions.pause") }}</button>
+                <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/resume">{{ t("common.actions.resume") }}</button>
+                <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/stop">{{ t("common.actions.stop") }}</button>
+                <a class="button-link" href="/scripts/{{ script.id }}">{{ t("common.labels.console") }}</a>
             </td>
         </tr>
         {% else %}
         <tr>
-            <td colspan="6">No scripts yet. Add one above.</td>
+            <td colspan="6">{{ t("web.scripts.empty") }}</td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
 </section>
 {% endblock %}
-

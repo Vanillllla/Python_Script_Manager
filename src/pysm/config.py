@@ -11,6 +11,7 @@ APP_NAME = "PythonScriptManager"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 1511
 DEFAULT_TERMINAL_BUFFER = 1_048_576
+DEFAULT_LANGUAGE = "en"
 
 
 def resolve_app_home() -> Path:
@@ -62,6 +63,7 @@ class AppSettings:
     manager_autostart: bool = False
     install_root: str | None = None
     terminal_buffer_bytes: int = DEFAULT_TERMINAL_BUFFER
+    language: str = DEFAULT_LANGUAGE
 
     @classmethod
     def from_mapping(cls, mapping: dict[str, object], root: Path) -> "AppSettings":
@@ -75,6 +77,7 @@ class AppSettings:
             terminal_buffer_bytes=int(
                 mapping.get("terminal_buffer_bytes", DEFAULT_TERMINAL_BUFFER)
             ),
+            language=_as_language(mapping.get("language", DEFAULT_LANGUAGE)),
         )
 
     def to_mapping(self) -> dict[str, object]:
@@ -85,6 +88,7 @@ class AppSettings:
             "manager_autostart": self.manager_autostart,
             "install_root": self.install_root,
             "terminal_buffer_bytes": self.terminal_buffer_bytes,
+            "language": self.language,
         }
 
     def to_json(self) -> str:
@@ -97,4 +101,12 @@ def _as_bool(value: object) -> bool:
     if isinstance(value, str):
         return value.strip().lower() in {"1", "true", "yes", "on"}
     return bool(value)
+
+
+def _as_language(value: object) -> str:
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"en", "ru"}:
+            return normalized
+    return DEFAULT_LANGUAGE
 

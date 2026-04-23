@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+from pysm.domain.messages import MessageSpec
 
 
 class Base(DeclarativeBase):
@@ -114,10 +116,16 @@ class DependencyReport:
 @dataclass(slots=True)
 class StartScriptResult:
     status: str
-    message: str
-    missing_modules: list[str]
+    message: MessageSpec
+    missing_modules: list[str] = field(default_factory=list)
     run_id: int | None = None
     pid: int | None = None
+
+
+@dataclass(slots=True)
+class ActionResult:
+    status: str
+    message: MessageSpec
 
 
 @dataclass(slots=True)

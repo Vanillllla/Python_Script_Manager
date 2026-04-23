@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from pysm.config import AppPaths
+from pysm.i18n import LocalizationService
 from pysm.infra.database import Database
 from pysm.infra.logging import configure_logging
 from pysm.services.autostart import AutostartService
@@ -16,6 +17,7 @@ from pysm.services.settings import SettingsService
 class ServiceContainer:
     paths: AppPaths
     database: Database
+    i18n: LocalizationService
     settings: SettingsService
     dependencies: DependencyService
     interpreters: InterpreterService
@@ -28,6 +30,7 @@ def build_container() -> ServiceContainer:
     configure_logging(paths)
     database = Database(paths)
     database.initialize()
+    i18n_service = LocalizationService()
     settings_service = SettingsService(database, paths)
     dependency_service = DependencyService()
     interpreter_service = InterpreterService(database, paths)
@@ -43,6 +46,7 @@ def build_container() -> ServiceContainer:
     return ServiceContainer(
         paths=paths,
         database=database,
+        i18n=i18n_service,
         settings=settings_service,
         dependencies=dependency_service,
         interpreters=interpreter_service,

@@ -5,6 +5,7 @@ import json
 from sqlalchemy import select
 
 from pysm.config import AppPaths, AppSettings
+from pysm.domain.exceptions import PysmError
 from pysm.domain.models import AppSettingRecord
 from pysm.infra.database import Database
 
@@ -21,6 +22,15 @@ class SettingsService:
         return AppSettings.from_mapping(mapping, root=self.paths.root)
 
     def update_settings(self, **changes: object) -> AppSettings:
+        if "language" in changes:
+            language = str(changes["language"]).strip().lower()
+            if language not in {"en", "ru"}:
+                raise PysmError(
+                    code="settings.invalid_language",
+                    message_key="errors.settings.invalid_language",
+                    params={"language": str(changes["language"])},
+                )
+            changes["language"] = language
         settings = self.get_settings().to_mapping()
         settings.update(changes)
         with self.database.session() as session:

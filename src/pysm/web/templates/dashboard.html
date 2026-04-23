@@ -1,46 +1,46 @@
 {% extends "base.html" %}
-{% block title %}Dashboard | PYSM{% endblock %}
-{% block heading %}Dashboard{% endblock %}
-{% block subheading %}Overview of the local manager, script fleet, and system load.{% endblock %}
+{% block title %}{{ t("web.dashboard.title") }}{% endblock %}
+{% block heading %}{{ t("web.dashboard.heading") }}{% endblock %}
+{% block subheading %}{{ t("web.dashboard.subheading") }}{% endblock %}
 {% block content %}
 <section class="grid cards">
     <article class="card">
-        <span class="eyebrow">Manager</span>
-        <strong>{{ health.status }}</strong>
-        <small>PID: {{ health.pid or "n/a" }}</small>
+        <span class="eyebrow">{{ t("common.labels.manager") }}</span>
+        <strong>{{ status_label(health.status) }}</strong>
+        <small>{{ t("common.labels.pid") }}: {{ health.pid or t("common.values.na") }}</small>
     </article>
     <article class="card">
-        <span class="eyebrow">Scripts</span>
+        <span class="eyebrow">{{ t("common.labels.scripts") }}</span>
         <strong>{{ scripts | length }}</strong>
-        <small>Running: {{ health.running_scripts }}</small>
+        <small>{{ t("common.labels.running_scripts") }}: {{ health.running_scripts }}</small>
     </article>
     <article class="card">
-        <span class="eyebrow">CPU</span>
-        <strong>{{ load.cpu_percent if load.cpu_percent is not none else "n/a" }}%</strong>
-        <small>System load</small>
+        <span class="eyebrow">{{ t("common.labels.cpu") }}</span>
+        <strong>{{ load.cpu_percent if load.cpu_percent is not none else t("common.values.na") }}%</strong>
+        <small>{{ t("web.dashboard.system_load") }}</small>
     </article>
     <article class="card">
-        <span class="eyebrow">Memory</span>
-        <strong>{{ load.memory_percent if load.memory_percent is not none else "n/a" }}%</strong>
-        <small>System memory</small>
+        <span class="eyebrow">{{ t("common.labels.memory") }}</span>
+        <strong>{{ load.memory_percent if load.memory_percent is not none else t("common.values.na") }}%</strong>
+        <small>{{ t("web.dashboard.system_memory") }}</small>
     </article>
 </section>
 
 <section class="panel">
     <div class="panel-header">
-        <h3>Recent Scripts</h3>
-        <a class="button-link" href="/scripts">Open script manager</a>
+        <h3>{{ t("web.dashboard.recent_scripts") }}</h3>
+        <a class="button-link" href="/scripts">{{ t("web.dashboard.open_manager") }}</a>
     </div>
     <table class="data-table">
         <thead>
         <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Status</th>
-            <th>PID</th>
-            <th>CPU</th>
-            <th>Memory</th>
-            <th></th>
+            <th>{{ t("common.labels.id") }}</th>
+            <th>{{ t("common.labels.name") }}</th>
+            <th>{{ t("common.labels.status") }}</th>
+            <th>{{ t("common.labels.pid") }}</th>
+            <th>{{ t("common.labels.cpu") }}</th>
+            <th>{{ t("common.labels.memory") }}</th>
+            <th>{{ t("common.labels.actions") }}</th>
         </tr>
         </thead>
         <tbody>
@@ -48,19 +48,18 @@
         <tr>
             <td>{{ script.id }}</td>
             <td>{{ script.name }}</td>
-            <td><span class="status status-{{ script.status }}">{{ script.status }}</span></td>
-            <td>{{ script.pid or "n/a" }}</td>
-            <td>{{ "%.1f"|format(script.cpu_percent or 0) if script.cpu_percent is not none else "n/a" }}</td>
-            <td>{{ "%.1f"|format(script.memory_percent or 0) if script.memory_percent is not none else "n/a" }}</td>
-            <td><a class="button-link" href="/scripts/{{ script.id }}">Details</a></td>
+            <td><span class="status status-{{ script.status }}">{{ status_label(script.status) }}</span></td>
+            <td>{{ script.pid or t("common.values.na") }}</td>
+            <td>{{ "%.1f"|format(script.cpu_percent or 0) if script.cpu_percent is not none else t("common.values.na") }}</td>
+            <td>{{ "%.1f"|format(script.memory_percent or 0) if script.memory_percent is not none else t("common.values.na") }}</td>
+            <td><a class="button-link" href="/scripts/{{ script.id }}">{{ t("common.actions.open") }}</a></td>
         </tr>
         {% else %}
         <tr>
-            <td colspan="7">No scripts registered yet.</td>
+            <td colspan="7">{{ t("web.dashboard.empty") }}</td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
 </section>
 {% endblock %}
-

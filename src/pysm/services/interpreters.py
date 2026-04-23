@@ -11,6 +11,7 @@ from pathlib import Path
 from sqlalchemy import delete, select
 
 from pysm.config import AppPaths
+from pysm.domain.exceptions import PysmError
 from pysm.domain.models import (
     EnvironmentRecord,
     InterpreterRecord,
@@ -71,7 +72,11 @@ class InterpreterService:
     def add_interpreter(self, python_exe: str, label: str | None = None) -> InterpreterRecord:
         probed = self._probe_python(python_exe)
         if not probed:
-            raise ValueError(f"Unable to probe Python interpreter: {python_exe}")
+            raise PysmError(
+                code="interpreter.probe_failed",
+                message_key="errors.interpreter.probe_failed",
+                params={"python_exe": python_exe},
+            )
         with self.database.session() as session:
             record = session.scalar(
                 select(InterpreterRecord).where(InterpreterRecord.python_exe == probed["python_exe"])
@@ -103,7 +108,12 @@ class InterpreterService:
         with self.database.session() as session:
             base = session.get(InterpreterRecord, base_interpreter_id)
             if base is None:
-                raise ValueError(f"Unknown interpreter id {base_interpreter_id}")
+                raise PysmError(
+                    code="interpreter.unknown",
+                    message_key="errors.interpreter.unknown",
+                    params={"interpreter_id": base_interpreter_id},
+                    status_code=404,
+                )
             env_name = _slugify(name or f"{base.label}-{base.version}")
             env_path = self.paths.runtimes_dir / "envs" / env_name
             python_exe = env_path / "Scripts" / "python.exe"
@@ -136,7 +146,11 @@ class InterpreterService:
             return environments[0]
         interpreters = self.discover_system_interpreters()
         if not interpreters:
-            raise RuntimeError("No Python interpreters discovered")
+            raise PysmError(
+                code="environment.no_interpreters",
+                message_key="errors.environment.no_interpreters",
+                status_code=404,
+            )
         return self.install_environment(interpreters[0].id, name="default")
 
     def assign_environment_to_script(self, script_id: int, environment_id: int) -> ScriptRecord:
@@ -144,7 +158,11 @@ class InterpreterService:
             script = session.get(ScriptRecord, script_id)
             environment = session.get(EnvironmentRecord, environment_id)
             if script is None or environment is None:
-                raise ValueError("Unknown script or environment")
+                raise PysmError(
+                    code="interpreter.script_or_environment_unknown",
+                    message_key="errors.interpreter.script_or_environment_unknown",
+                    status_code=404,
+                )
             script.interpreter_env_id = environment.id
             session.commit()
             session.refresh(script)
@@ -154,7 +172,12 @@ class InterpreterService:
         with self.database.session() as session:
             environment = session.get(EnvironmentRecord, environment_id)
             if environment is None:
-                raise ValueError(f"Unknown environment id {environment_id}")
+                raise PysmError(
+                    code="environment.unknown",
+                    message_key="errors.environment.unknown",
+                    params={"environment_id": environment_id},
+                    status_code=404,
+                )
             result = subprocess.run(
                 [environment.python_exe, "-m", "pip", "list", "--format=json"],
                 capture_output=True,
@@ -162,7 +185,10 @@ class InterpreterService:
                 check=False,
             )
             if result.returncode != 0:
-                raise RuntimeError(result.stderr.strip() or "pip list failed")
+                raise PysmError(
+                    code="runtime.pip_list_failed",
+                    message_key="errors.runtime.pip_list_failed",
+                )
             packages = json.loads(result.stdout or "[]")
             session.execute(
                 delete(ModuleSnapshotRecord).where(
@@ -186,12 +212,23 @@ class InterpreterService:
         with self.database.session() as session:
             environment = session.get(EnvironmentRecord, environment_id)
             if environment is None:
-                raise ValueError(f"Unknown environment id {environment_id}")
-            subprocess.run(
+                raise PysmError(
+                    code="environment.unknown",
+                    message_key="errors.environment.unknown",
+                    params={"environment_id": environment_id},
+                    status_code=404,
+                )
+            result = subprocess.run(
                 [environment.python_exe, "-m", "pip", "install", *packages],
-                check=True,
+                check=False,
                 text=True,
+                capture_output=True,
             )
+            if result.returncode != 0:
+                raise PysmError(
+                    code="runtime.pip_install_failed",
+                    message_key="errors.runtime.pip_install_failed",
+                )
 
     def get_environment(self, environment_id: int | None) -> EnvironmentRecord | None:
         if environment_id is None:

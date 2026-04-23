@@ -4,13 +4,15 @@ import os
 import subprocess
 import sys
 
+from pysm.domain.exceptions import PysmError
+
 
 class AutostartService:
     TASK_NAME = "PythonScriptManager"
 
     def enable_manager_autostart(self) -> None:
         target = _build_launch_command()
-        subprocess.run(
+        result = subprocess.run(
             [
                 "schtasks",
                 "/Create",
@@ -24,18 +26,28 @@ class AutostartService:
                 "LIMITED",
                 "/F",
             ],
-            check=True,
+            check=False,
             capture_output=True,
             text=True,
         )
+        if result.returncode != 0:
+            raise PysmError(
+                code="autostart.manager_enable_failed",
+                message_key="errors.autostart.manager_enable_failed",
+            )
 
     def disable_manager_autostart(self) -> None:
-        subprocess.run(
+        result = subprocess.run(
             ["schtasks", "/Delete", "/TN", self.TASK_NAME, "/F"],
             check=False,
             capture_output=True,
             text=True,
         )
+        if result.returncode not in (0, 1):
+            raise PysmError(
+                code="autostart.manager_disable_failed",
+                message_key="errors.autostart.manager_disable_failed",
+            )
 
 
 def _build_launch_command() -> str:

@@ -4,7 +4,7 @@ import json
 from contextlib import contextmanager
 from typing import Iterator
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from pysm.config import AppPaths, AppSettings
@@ -23,7 +23,10 @@ class Database:
         )
 
     def initialize(self) -> None:
-        Base.metadata.create_all(self.engine)
+        with self.engine.begin() as connection:
+            for table in Base.metadata.sorted_tables:
+                if not inspect(connection).has_table(table.name):
+                    table.create(connection)
         with self.session() as session:
             existing = {
                 record.key: record.value
