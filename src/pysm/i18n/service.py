@@ -114,6 +114,7 @@ class LocalizationService:
             "frontend.toast.saved",
             "frontend.toast.action_complete",
             "frontend.toast.autostart_updated",
+            "frontend.confirm.remove_script",
             "frontend.terminal.connecting",
             "frontend.terminal.disconnected",
             "frontend.terminal.error",

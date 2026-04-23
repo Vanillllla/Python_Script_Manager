@@ -90,14 +90,16 @@ class RuntimeService:
             return record
 
     def remove_scripts(self, script_ids: list[int]) -> int:
+        unique_ids = sorted(set(script_ids))
+        for script_id in unique_ids:
+            if script_id in self.active_sessions:
+                self.stop_script(script_id)
         removed = 0
         with self.database.session() as session:
-            for script_id in script_ids:
+            for script_id in unique_ids:
                 record = session.get(ScriptRecord, script_id)
                 if record is None:
                     continue
-                if script_id in self.active_sessions:
-                    self.stop_script(script_id)
                 session.delete(record)
                 removed += 1
             session.commit()
@@ -237,6 +239,7 @@ class RuntimeService:
 
     def stop_script(self, script_id: int) -> ActionResult:
         active = self.active_sessions.get(script_id)
+        exit_code: int | None = None
         with self.database.session() as session:
             script = session.get(ScriptRecord, script_id)
             if script is None:
@@ -248,6 +251,7 @@ class RuntimeService:
                 )
             if active:
                 active.process.terminate()
+                exit_code = active.process.exit_code
                 self.retained_sessions[script_id] = RetainedTerminalSession(
                     run_id=active.run_id,
                     buffer=active.process.buffer,
@@ -264,7 +268,11 @@ class RuntimeService:
             if latest_run:
                 latest_run.status = "stopped"
                 latest_run.ended_at = datetime.utcnow()
-                latest_run.exit_code = latest_run.exit_code if latest_run.exit_code is not None else 0
+                latest_run.exit_code = (
+                    exit_code if exit_code is not None else latest_run.exit_code
+                )
+                if latest_run.exit_code is None:
+                    latest_run.exit_code = 0
             script.desired_state = "stopped"
             session.commit()
         self.active_sessions.pop(script_id, None)

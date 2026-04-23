@@ -103,7 +103,7 @@ def create_app(container: ServiceContainer | None = None) -> FastAPI:
             "dashboard.html",
             request,
             scripts=services.runtime.list_scripts(),
-            load=_system_load(),
+            load=_system_load(services),
             health=_health_payload(services),
         )
 
@@ -333,7 +333,7 @@ def create_app(container: ServiceContainer | None = None) -> FastAPI:
 
     @app.get("/api/load", response_model=SystemLoadResponse)
     async def api_load() -> SystemLoadResponse:
-        return SystemLoadResponse.model_validate(_system_load())
+        return SystemLoadResponse.model_validate(_system_load(services))
 
     @app.get("/api/settings", response_model=SettingsResponse)
     async def api_settings() -> SettingsResponse:
@@ -418,13 +418,29 @@ def _static_dir() -> Path:
     return Path(__file__).resolve().parents[1] / "web" / "static"
 
 
-def _system_load() -> dict[str, Any]:
+def _system_load(services: ServiceContainer | None = None) -> dict[str, Any]:
+    processes: list[dict[str, Any]] = []
+    if services is not None:
+        for script in services.runtime.list_scripts():
+            pid = script.get("pid")
+            if pid is None:
+                continue
+            processes.append(
+                {
+                    "script_id": script["id"],
+                    "name": script["name"],
+                    "status": script["status"],
+                    "pid": pid,
+                    "cpu_percent": script.get("cpu_percent"),
+                    "memory_percent": script.get("memory_percent"),
+                }
+            )
     if psutil is None:
-        return {"cpu_percent": None, "memory_percent": None, "processes": []}
+        return {"cpu_percent": None, "memory_percent": None, "processes": processes}
     return {
         "cpu_percent": psutil.cpu_percent(interval=0.0),
         "memory_percent": psutil.virtual_memory().percent,
-        "processes": [],
+        "processes": processes,
     }
 
 

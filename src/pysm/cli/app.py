@@ -439,6 +439,18 @@ def _echo_load(payload: dict[str, Any], locale: str) -> None:
         f"{I18N.translate('common.labels.memory', locale)}: "
         f"{payload.get('memory_percent') if payload.get('memory_percent') is not None else I18N.translate('common.values.na', locale)}"
     )
+    processes = payload.get("processes") or []
+    if not processes:
+        return
+    typer.echo("")
+    typer.echo(I18N.translate("common.labels.scripts", locale) + ":")
+    for process in processes:
+        typer.echo(
+            f"[{process.get('script_id')}] {process.get('name')} "
+            f"| {I18N.translate('common.labels.pid', locale)}: {process.get('pid')} "
+            f"| {I18N.translate('common.labels.cpu', locale)}: {process.get('cpu_percent')} "
+            f"| {I18N.translate('common.labels.memory', locale)}: {process.get('memory_percent')}"
+        )
 
 
 def _fail(message: str) -> None:
