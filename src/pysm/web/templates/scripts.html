@@ -35,6 +35,8 @@
             <th>{{ t("common.labels.path") }}</th>
             <th>{{ t("common.labels.status") }}</th>
             <th>{{ t("common.labels.pid") }}</th>
+            <th>{{ t("common.labels.cpu") }}</th>
+            <th>{{ t("common.labels.memory") }}</th>
             <th>{{ t("common.labels.actions") }}</th>
         </tr>
         </thead>
@@ -46,17 +48,20 @@
             <td class="path">{{ script.script_path }}</td>
             <td><span class="status status-{{ script.status }}">{{ status_label(script.status) }}</span></td>
             <td>{{ script.pid or t("common.values.na") }}</td>
+            <td>{{ "%.1f"|format(script.cpu_percent or 0) if script.cpu_percent is not none else t("common.values.na") }}</td>
+            <td>{{ "%.1f"|format(script.memory_percent or 0) if script.memory_percent is not none else t("common.values.na") }}</td>
             <td class="actions">
                 <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/start">{{ t("common.actions.start") }}</button>
                 <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/pause">{{ t("common.actions.pause") }}</button>
                 <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/resume">{{ t("common.actions.resume") }}</button>
                 <button data-script-action data-method="POST" data-endpoint="/api/scripts/{{ script.id }}/stop">{{ t("common.actions.stop") }}</button>
+                <button data-remove-script data-script-id="{{ script.id }}" data-script-name="{{ script.name }}">{{ t("common.actions.remove") }}</button>
                 <a class="button-link" href="/scripts/{{ script.id }}">{{ t("common.labels.console") }}</a>
             </td>
         </tr>
         {% else %}
         <tr>
-            <td colspan="6">{{ t("web.scripts.empty") }}</td>
+            <td colspan="8">{{ t("web.scripts.empty") }}</td>
         </tr>
         {% endfor %}
         </tbody>

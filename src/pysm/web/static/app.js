@@ -79,6 +79,31 @@ function bindScriptActions() {
   });
 }
 
+function bindScriptRemoval() {
+  document.querySelectorAll("[data-remove-script]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const scriptId = Number(button.dataset.scriptId);
+      const scriptName = button.dataset.scriptName || `#${scriptId}`;
+      const confirmation = msg(
+        "frontend.confirm.remove_script",
+        "Remove this script?",
+      )
+        .replace("{id}", String(scriptId))
+        .replace("{name}", scriptName);
+      if (!window.confirm(confirmation)) {
+        return;
+      }
+      try {
+        const data = await apiRequest("DELETE", "/api/scripts", { script_ids: [scriptId] });
+        showToast(data.message || msg("frontend.toast.action_complete", "Action complete."));
+        window.setTimeout(() => window.location.reload(), 350);
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    });
+  });
+}
+
 function bindManagerAutostart() {
   document.querySelectorAll("[data-manager-autostart]").forEach((button) => {
     button.addEventListener("click", async () => {
@@ -183,6 +208,7 @@ function initTerminal() {
 document.addEventListener("DOMContentLoaded", () => {
   bindApiForms();
   bindScriptActions();
+  bindScriptRemoval();
   bindManagerAutostart();
   bindModuleLinks();
   initTerminal();

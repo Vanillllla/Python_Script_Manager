@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from pysm.domain.models import DependencyReport
+from pysm.domain.models import DependencyReport, ScriptRecord
 
 
 def test_runtime_prevents_duplicate_start(container, registered_environment, tmp_path: Path) -> None:
@@ -99,3 +99,20 @@ def test_runtime_ensure_autostart_scripts_starts_flagged_scripts(
     current = next(item for item in scripts if item["id"] == record.id)
     assert current["status"] == "running"
     container.runtime.stop_script(record.id)
+
+
+def test_runtime_remove_script_stops_active_process(
+    container, registered_environment, tmp_path: Path
+) -> None:
+    script = tmp_path / "remove_me.py"
+    script.write_text("import time\nprint('alive', flush=True)\ntime.sleep(5)\n", encoding="utf-8")
+    record = container.runtime.add_script(str(script), interpreter_env_id=registered_environment.id)
+    started = container.runtime.start_script(record.id)
+    assert started.status == "started"
+
+    removed = container.runtime.remove_scripts([record.id])
+    assert removed == 1
+    assert record.id not in container.runtime.active_sessions
+
+    with container.database.session() as session:
+        assert session.get(ScriptRecord, record.id) is None

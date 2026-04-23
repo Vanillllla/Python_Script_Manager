@@ -146,6 +146,7 @@
   "errors.script.not_found": "Unknown script ID {script_id}.",
   "errors.script.not_running": "Script {script_id} is not running.",
   "errors.settings.invalid_language": "Unsupported language: {language}.",
+  "frontend.confirm.remove_script": "Remove script {name} (ID {id})?",
   "frontend.modules.empty": "Select an environment to list installed modules.",
   "frontend.terminal.connecting": "Connecting to script console...\r\n",
   "frontend.terminal.disconnected": "\r\n[terminal disconnected]\r\n",
